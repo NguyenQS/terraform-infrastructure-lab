@@ -158,3 +158,61 @@ Terraform verwaltet aktuell:
 * Port-Mapping `8081 -> 80`
 
 Der Container ist lokal unter `http://localhost:8081` erreichbar.
+
+## for_each
+
+- `for_each` erzeugt mehrere Instanzen aus einer Resource-Definition.
+- In diesem Projekt werden damit zwei Docker Networks erstellt:
+  - `docker_network.networks["frontend"]`
+  - `docker_network.networks["backend"]`
+- Die realen Docker Networks heißen:
+  - `terraform-frontend`
+  - `terraform-backend`
+- Vorteil gegenüber `count`: Die Instanzen besitzen stabile, sprechende Schlüssel wie `"frontend"` statt nur `[0]` oder `[1]`.
+
+## Docker Networks
+
+- Docker Networks verbinden Container logisch miteinander.
+- Terraform verwaltet in diesem Projekt zwei Networks über `docker_network`.
+- Der Nginx-Container wird aktuell mit dem Frontend-Network verbunden.
+
+## Resource References and Dependencies
+
+Der Container verwendet:
+
+`docker_network.networks["frontend"].name`
+
+Dadurch verwendet `docker_container.web` ein Attribut einer anderen Terraform Resource.
+
+Terraform erkennt daraus automatisch die Abhängigkeit:
+
+`docker_network.networks["frontend"] -> docker_container.web`
+
+Ein explizites `depends_on` ist dafür nicht notwendig.
+
+## Resource Replacement durch Network-Änderung
+
+Der bestehende Container lief zunächst nur im standardmäßigen Docker Network.
+
+Danach wurde ergänzt:
+
+`networks_advanced`
+
+mit dem Terraform-verwalteten Network `terraform-frontend`.
+
+Der Terraform Plan zeigte:
+
+`-/+ destroy and then create replacement`
+
+und:
+
+`networks_advanced # forces replacement`
+
+Terraform löschte deshalb den bestehenden Container und erstellte ihn mit der neuen Network-Konfiguration neu.
+
+Ergebnis:
+
+- 1 Resource hinzugefügt
+- 0 direkt geändert
+- 1 Resource zerstört
+- Container weiterhin unter Port 8081 erreichbar
